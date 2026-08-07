@@ -20,7 +20,6 @@ async def main():
         async with asyncio.TaskGroup() as tg:
             for coro in coroutines[:-1]:
                 tg.create_task(coro).add_done_callback(handler)
-        
     except Exception:
         pass
     finally:
