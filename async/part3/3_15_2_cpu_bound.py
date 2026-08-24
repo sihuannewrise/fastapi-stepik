@@ -19,15 +19,13 @@ async def main():
             if asyncio.iscoroutine(entity):
                 task = asyncio.create_task(entity)
                 task.add_done_callback(partial(cb, "Корутина"))
-                tasks.append(task)
             elif hasattr(entity, "cpu"):
-                future = loop.run_in_executor(pr_pool, entity)
-                future.add_done_callback(partial(cb, "Расчетная задача"))
-                tasks.append(future)
+                task = loop.run_in_executor(pr_pool, entity)
+                task.add_done_callback(partial(cb, "Расчетная задача"))
             else:
-                future = loop.run_in_executor(th_pool, entity)
-                future.add_done_callback(partial(cb, "Блокирующая задача"))
-                tasks.append(future)
+                task = loop.run_in_executor(th_pool, entity)
+                task.add_done_callback(partial(cb, "Блокирующая задача"))
+            tasks.append(task)
         try:
             await asyncio.gather(*tasks, return_exceptions=True)
         except Exception as e:
