@@ -1,10 +1,14 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from functools import partial
 
 entities = []
 
-async def cb(task):
-
+def cb(prefix, task):
+    try:
+        print(f"{prefix} завершена с результатом {task.result()}")
+    except Exception as e:
+        print(f"{prefix} завершена с результатом {repr(e)}")
 
 
 async def main():
@@ -13,12 +17,21 @@ async def main():
     with ThreadPoolExecutor() as th_pool, ProcessPoolExecutor() as pr_pool:
         for entity in entities:
             if asyncio.iscoroutine(entity):
-                tasks.append(asyncio.create_task(entity).add_done_callback(cb))
+                task = asyncio.create_task(entity)
+                task.add_done_callback(partial(cb, "Корутина"))
+                tasks.append(task)
             elif hasattr(entity, "cpu"):
-                tasks.append(loop.run_in_executor(pr_pool, entity).add_done_callback(cb))
+                future = loop.run_in_executor(pr_pool, entity)
+                future.add_done_callback(partial(cb, "Расчетная задача"))
+                tasks.append(future)
             else:
-                tasks.append(loop.run_in_executor(th_pool, entity).add_done_callback(cb))
-        await asyncio.gather(*tasks, return_exceptions=True)
+                future = loop.run_in_executor(th_pool, entity)
+                future.add_done_callback(partial(cb, "Блокирующая задача"))
+                tasks.append(future)
+        try:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        except Exception as e:
+            pass
 
 
 if __name__ == '__main__':
