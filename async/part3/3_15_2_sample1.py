@@ -3,6 +3,9 @@ import time
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from typing import Callable
 
+entities = []
+
+
 async def wrapper(f: Callable, tp: ThreadPoolExecutor, pp: ProcessPoolExecutor):
     loop = asyncio.get_running_loop()
     msg = "{} завершена с результатом {}"
