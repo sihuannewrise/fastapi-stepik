@@ -1,5 +1,4 @@
 import asyncio
-import traceback as tb
 import time
 
 
@@ -18,19 +17,13 @@ class AsyncDelay:
         self.delay = delay
 
     async def __aenter__(self):
-        print("1. Вход в контекст")
-        await asyncio.sleep(0)
-        return self.delay
+        await asyncio.sleep(self.delay)
+        return self
 
     async def __aexit__(self, exc_type, exc_value, traceback):
-        print("3. Выход из контекста")
         if exc_type:
-            print("Произошла ошибка!")
-            print(f"\tТип: {exc_type}")
-            print(f"\tСообщение: {exc_value}")
-            print("\tТрейсбэк:")
-            tb.print_tb(traceback)
-        await asyncio.sleep(0)
+            print(f"{exc_type.__name__}: {exc_value}")
+        return True
 
 
 async def main():
