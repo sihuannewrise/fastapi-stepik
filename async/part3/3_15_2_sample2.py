@@ -7,6 +7,8 @@ from collections.abc import Sequence
 import time
 from functools import partial
 
+entities = []
+
 
 class TasksByTypes(TypedDict):
     coros: list[CoroutineType]
