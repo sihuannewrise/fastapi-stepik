@@ -18,7 +18,15 @@ async def consumer(queue: asyncio.Queue):
 
 
 async def producer_consumer(queue: asyncio.Queue):
-    await asyncio.gather(consumer(queue), consumer(queue))
-    await asyncio.create_task(producer(queue))
+    producer_task = asyncio.create_task(producer(queue))
+    consumer_tasks = [asyncio.create_task(consumer(queue)) for _ in range(2)]
+
+    await producer_task
     await queue.join()
+
+    for task in consumer_tasks:
+        task.cancel()
+
+    await asyncio.gather(*consumer_tasks, return_exceptions=True)
+
     final()
