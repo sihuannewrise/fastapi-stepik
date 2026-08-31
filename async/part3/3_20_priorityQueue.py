@@ -1,6 +1,5 @@
 import asyncio
 
-
 async def producer(queue: asyncio.Queue):
     async for elem in json_gen():
         await queue.put(elem)
