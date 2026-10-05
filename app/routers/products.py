@@ -19,9 +19,8 @@ async def get_all_products(db: Session = Depends(get_db)):
     """
     Возвращает список всех товаров.
     """
-    stmt = select(ProductModel).where(ProductModel.is_active == True)
-    products = db.scalars(stmt).all()
-    return products
+    stmt = select(ProductModel).where(ProductModel.is_active.is_(True))
+    return db.scalars(stmt).all()
 
 
 @router.post("/", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
@@ -29,22 +28,22 @@ async def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     """
     Создаёт новый товар.
     """
-    stmt = select(CategoryModel).where(
+    stmt = select(CategoryModel.id).where(
         CategoryModel.id == product.category_id,
-        CategoryModel.is_active == True,
+        CategoryModel.is_active.is_(True),
     )
     category = db.scalars(stmt).first()
     if category is None:
         raise HTTPException(status_code=400, detail="Category not found or inactive")
 
-    db_product = ProductSchema(is_active=True, **product.model_dump())
+    db_product = ProductModel(**product.model_dump())
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
     return db_product
 
 
-@router.get("/category/{category_id}", response_model=list[ProductSchema], status_code=status.HTTP_200_OK)
+@router.get("/category/{category_id}", response_model=list[ProductSchema])
 async def get_products_by_category(category_id: int, db: Session = Depends(get_db)):
     """
     Возвращает список товаров в указанной категории по её ID.
@@ -68,7 +67,7 @@ async def get_product(product_id: int, db: Session = Depends(get_db)):
     Возвращает детальную информацию о товаре по его ID.
     """
     stmt = select(ProductModel).where(ProductModel.id == product_id, ProductModel.is_active == True)
-    product = db.scalars(stmt).first
+    product = db.scalars(stmt).first()
     if product is None:
         raise HTTPException(status_code=400, detail="Product not found or inactive")
     return product
@@ -96,11 +95,8 @@ async def update_product(product_id: int, product: ProductCreate, db: Session = 
         if category is None:
             raise HTTPException(status_code=400, detail="Category not found or inactive")
 
-    db.execute(
-        update(ProductModel)
-        .where(ProductModel.id == product_id)
-        .values(**product.model_dump())
-    )
+    for field, value in product.model_dump().items():
+        setattr(db_product, field, value)
     db.commit()
     db.refresh(db_product)
     return db_product
