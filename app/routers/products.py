@@ -1,4 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select, update
+from sqlalchemy.orm import Session
+
+from app.models.categories import Category as CategoryModel
+from app.models.products import Product as ProductModel
+from app.schemas import Product as ProductSchema, ProductCreate
+from app.db_depends import get_db
 
 
 router = APIRouter(
@@ -7,28 +14,49 @@ router = APIRouter(
 )
 
 
-@router.get("/")
-async def get_all_products():
+@router.get("/", response_model=list[ProductSchema])
+async def get_all_products(db: Session = Depends(get_db)):
     """
     Возвращает список всех товаров.
     """
-    return {"message": "Список всех товаров (заглушка)"}
+    stmt = select(ProductModel).where(ProductModel.is_active == True)
+    products = db.scalars(stmt).all()
+    return products
 
 
-@router.post("/")
-async def create_product():
+@router.post("/", response_model=ProductSchema, status_code=status.HTTP_201_CREATED)
+async def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     """
     Создаёт новый товар.
     """
-    return {"message": "Товар создан (заглушка)"}
+    stmt = select(CategoryModel).where(
+        CategoryModel.id == product.category_id,
+        CategoryModel.is_active == True,
+    )
+    category = db.scalars(stmt).first()
+    if category is None:
+        raise HTTPException(status_code=400, detail="Category not found or inactive")
+
+    db_product = ProductSchema(is_active=True, **product.model_dump())
+    db.add(db_product)
+    db.commit()
+    db.refresh(db_product)
+    return db_product
 
 
-@router.get("/category/{category_id}")
-async def get_products_by_category(category_id: int):
+@router.get("/category/{category_id}", response_model=list[ProductSchema]))
+async def get_products_by_category(category_id: int, db: Session = Depends(get_db)):
     """
     Возвращает список товаров в указанной категории по её ID.
     """
-    return {"message": f"Товары в категории {category_id} (заглушка)"}
+    stmt = select(CategoryModel).where(
+        CategoryModel.id == category_id,
+        CategoryModel.is_active == True,
+    )
+    category = db.scalars(stmt).first()
+    if category is None:
+        raise HTTPException(status_code=400, detail="Category not found or inactive")
+
 
 
 @router.get("/{product_id}")
