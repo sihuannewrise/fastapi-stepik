@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.categories import Category as CategoryModel
 from app.schemas import Category as CategorySchema, CategoryCreate
+from app.db_depends import get_async_db
 from app.db_depends import get_db
 
 
@@ -24,22 +26,23 @@ async def get_all_categories(db: Session = Depends(get_db)):
 
 
 @router.post("/", response_model=CategorySchema, status_code=status.HTTP_201_CREATED)
-async def create_category(category: CategoryCreate, db: Session = Depends(get_db)):
+async def create_category(category: CategoryCreate, db: AsyncSession = Depends(get_async_db)):
     """
     Создаёт новую категорию.
     """
     if category.parent_id is not None:
         stmt = select(CategoryModel).where(CategoryModel.id == category.parent_id,
                                            CategoryModel.is_active == True)
-        parent = db.scalars(stmt).first()
+        result = await db.scalars(stmt)
+        parent = result.first()
         if parent is None:
             raise HTTPException(status_code=400, detail="Parent category not found")
 
     db_category = CategoryModel(**category.model_dump())
     db.add(db_category)
-    db.commit()
-    db.refresh(db_category)
+    await db.commit()
     return db_category
+
 
 
 @router.put("/{category_id}", response_model=CategorySchema)
