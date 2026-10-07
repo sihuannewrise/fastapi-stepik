@@ -17,7 +17,7 @@ router = APIRouter(
 @router.get("/", response_model=list[ProductSchema])
 async def get_all_products(db: AsyncSession = Depends(get_async_db)):
     """
-    Возвращает список всех товаров.
+    Возвращает список всех активных товаров.
     """
     stmt = select(ProductModel).where(ProductModel.is_active.is_(True))
     result = await db.scalars(stmt)
@@ -48,7 +48,7 @@ async def create_product(product: ProductCreate, db: AsyncSession = Depends(get_
 @router.get("/category/{category_id}", response_model=list[ProductSchema])
 async def get_products_by_category(category_id: int, db: AsyncSession = Depends(get_async_db)):
     """
-    Возвращает список товаров в указанной категории по её ID.
+    Возвращает список активных товаров в указанной категории по её ID.
     """
     stmt = select(CategoryModel).where(
         CategoryModel.id == category_id,
@@ -60,9 +60,8 @@ async def get_products_by_category(category_id: int, db: AsyncSession = Depends(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found or inactive")
 
     prompt = select(ProductModel).where(ProductModel.category_id == category_id, ProductModel.is_active.is_(True))
-    coro = await db.scalars(prompt)
-    products = coro.all()
-    return products
+    scalar_result = await db.scalars(prompt)
+    return scalar_result.all()
 
 
 @router.get("/{product_id}", response_model=ProductSchema)
@@ -77,9 +76,9 @@ async def get_product(product_id: int, db: AsyncSession = Depends(get_async_db))
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found or inactive")
 
     prompt = select(CategoryModel).where(CategoryModel.id == product.category_id,
-                                    CategoryModel.is_active.is_(True))
-    coro = await db.scalars(prompt)
-    category = coro.first()
+                                         CategoryModel.is_active.is_(True))
+    scalar_result = await db.scalars(prompt)
+    category = scalar_result.first()
     if not category:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found or inactive")
 
@@ -95,8 +94,8 @@ async def update_product(product_id: int, product: ProductCreate, db: AsyncSessi
         ProductModel.id == product_id,
         ProductModel.is_active.is_(True),
     )
-    coro = await db.scalars(stmt)
-    db_product = coro.first()
+    scalar_result = await db.scalars(stmt)
+    db_product = scalar_result.first()
     if db_product is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found or inactive")
 
@@ -126,12 +125,12 @@ async def delete_product(product_id: int, db: AsyncSession = Depends(get_async_d
         ProductModel.id == product_id,
         ProductModel.is_active.is_(True),
     )
-    coro = await db.scalars(stmt)
-    db_product = coro.first()
-    if not db_product:
+    scalar_result = await db.scalars(stmt)
+    product = scalar_result.first()
+    if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found or inactive")
 
-    db_product.is_active = False
+    product.is_active = False
     await db.commit()
-
-    return {"status": "success", "message": "Product marked as inactive"}
+    await db.refresh(product)
+    return product
