@@ -1,5 +1,5 @@
 from decimal import Decimal
-from sqlalchemy import String, Boolean, Integer, Numeric, true
+from sqlalchemy import String, Numeric, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import ForeignKey
 
@@ -17,5 +17,7 @@ class Product(Base):
     stock: Mapped[int] = mapped_column(default=0)
     is_active: Mapped[bool] = mapped_column(server_default=true())
     category_id: Mapped[int] = mapped_column(ForeignKey("categories.id"))
+    seller_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
     category: Mapped["Category"] = relationship(back_populates="products")
+    seller: Mapped["User"] = relationship("User", back_populates="products")
