@@ -73,10 +73,9 @@ async def get_current_user(
             SECRET_KEY,
             algorithms=[ALGORITHM],
         )
-
         email: str | None = payload.get("sub")
-
-        if email is None:
+        token_type: str | None = payload.get("token_type")
+        if email is None or token_type != "access":
             raise credentials_exception
 
     except jwt.ExpiredSignatureError:
